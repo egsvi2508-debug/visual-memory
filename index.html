@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b87d1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Visual Memory">
+<meta name="description" content="Visual memory test: memorize the squares. Pick any level to start from.">
+<title>Visual Memory Test</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%232b87d1'/%3E%3Crect x='20' y='20' width='40' height='40' rx='7' fill='white'/%3E%3Crect x='68' y='20' width='40' height='40' rx='7' fill='white' opacity='.35'/%3E%3Crect x='20' y='68' width='40' height='40' rx='7' fill='white' opacity='.35'/%3E%3Crect x='68' y='68' width='40' height='40' rx='7' fill='white'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --text: #333;
+    --body-text: #393939;
+    --hero: #2b87d1;
+    --hero-flash: #3eb8ff;
+    --hero-red: #ce2636;
+    --button: #ffd154;
+    --page: #e6e8f4;
+    --card: #ffffff;
+    --link: #45b1ff;
+    --tile: #000066;
+    --font: Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--body-text);
+    font-family: var(--font);
+    font-size: 18px;
+    line-height: 1.3;
+    -webkit-tap-highlight-color: transparent;
+  }
+  a { color: var(--link); text-decoration: none; }
+
+  /* Top bar */
+  .nav { background: #fff; padding-top: env(safe-area-inset-top, 0px); position: relative; z-index: 2; }
+  .nav-in { margin: 0 auto; max-width: 1010px; padding: 0 10px; position: relative; display: flex; }
+  @media (min-width: 500px) { .nav-in { padding: 0 20px; } }
+  .nav a { display: inline-block; color: #000; padding: 15px 12px; font-size: 18px; line-height: 18px; text-transform: uppercase; }
+  .nav a:hover { background: #f2f2f2; }
+  .nav .bolt { width: 17px; height: 14px; margin-right: 8px; vertical-align: -1px; fill: #bbb; }
+  .nav .full-nav { display: none; }
+  @media (min-width: 700px) { .nav .full-nav { display: inline-block; } }
+
+  /* Hero (the game area) */
+  .hero { background: var(--hero); position: relative; color: #fff; user-select: none; -webkit-user-select: none; overflow: hidden; text-align: center; }
+  .hero.flash-good { animation: flashGood 0.5s linear; }
+  .hero.flash-bad { animation: flashBad 0.5s linear; }
+  @keyframes flashGood { 0% { background: var(--hero); } 50% { background: var(--hero-flash); } 100% { background: var(--hero); } }
+  @keyframes flashBad { 0% { background: var(--hero-red); } 100% { background: var(--hero); } }
+  .stage {
+    display: flex; flex-direction: column; justify-content: center; margin: 0 auto; max-width: 1010px;
+    min-height: calc(100vh - 150px); position: relative; padding: 10px;
+  }
+  @media (min-width: 500px) { .stage { padding: 20px; min-height: 540px; } }
+  .view { animation: slideFadeIn 0.5s ease-out; }
+  .grp + .grp { margin-top: 30px; }
+  @keyframes slideFadeIn { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+
+  .hero-icon { width: 100px; height: 100px; animation: pulseFaint 1s ease-in-out infinite alternate; }
+  @keyframes pulseFaint { 0% { opacity: 0.6; } 100% { opacity: 1; } }
+  .hero h1 { font-weight: 400; font-size: 6vh; line-height: 1.3; margin: 0; }
+  .hero h2 { font-weight: 400; font-size: 4vh; line-height: 1.3; margin: 0; }
+  @media (min-width: 500px) { .hero h1 { font-size: 80px; } .hero h2 { font-size: 24px; } }
+
+  .btn {
+    padding: 12px 30px; color: var(--text) !important; background: var(--button); text-decoration: none; display: inline-block;
+    border: none; border-radius: 3px; transition: background 0.1s linear; font-weight: bold; cursor: pointer;
+    font-size: inherit; font-family: inherit; line-height: inherit;
+  }
+  .btn:hover { background: #fff; }
+  .btn.secondary { background: rgba(255, 255, 255, 0.5); }
+  .btn.secondary:hover { background: #fff; }
+  .btn:disabled { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.3) !important; cursor: unset; }
+  .btns .btn { margin: 5px 5px 0; }
+  .btn:focus-visible, .lv:focus-visible, .sound:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+  /* Start level picker (the one addition to the original) */
+  .picker { max-width: 520px; margin-left: auto; margin-right: auto; }
+  .picker-label { font-size: 18px; }
+  .picker-label span { opacity: 0.6; margin-right: 10px; }
+  .strip {
+    display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity; padding: 10px 4px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  }
+  .strip::-webkit-scrollbar { display: none; }
+  .lv {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 5px; border: 0; scroll-snap-align: center;
+    background: rgba(0, 0, 102, 0.15); color: #fff; font: bold 18px var(--font); cursor: pointer;
+  }
+  .lv:hover { background: rgba(255, 255, 255, 0.5); color: var(--text); }
+  .lv.on { background: #fff; color: var(--text); }
+
+  /* Play */
+  .qu { font-size: 28px; margin: 0 15px; }
+  .qu .lbl { margin-right: 10px; opacity: 0.6; }
+  .heart { width: 1.25em; height: 1em; vertical-align: -0.125em; margin-right: 5px; fill: currentColor; }
+  .board { position: relative; transform: translateZ(0); display: inline-block; touch-action: manipulation; }
+  .row { display: flex; }
+  .tile {
+    cursor: pointer; flex: none; background: var(--tile); opacity: 0.15; border-radius: 10px;
+    border: 4px solid transparent; background-clip: padding-box !important;
+    backface-visibility: visible; transform: rotateX(0deg) translateZ(1px); transition: transform 0.3s ease-out; z-index: 1;
+  }
+  .tile.active { opacity: 1; background: #fff; transform: rotateX(180deg) translateZ(1px); }
+  .tile:active:not(.active) { background: rgba(255, 255, 255, 0.5); }
+  .tile.error { background: rgba(0, 0, 0, 0.5); animation: shake 0.3s ease-out; }
+  @keyframes shake { 0% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } 100% { transform: translateX(0); } }
+
+  /* Game over */
+  .result-label { font-size: 24px; }
+  .hero .result-score { margin: 0; }
+  .result-note { font-size: 18px; line-height: 1.5; margin: 0 0 20px; }
+
+  .sound {
+    position: absolute; left: 20px; bottom: 20px; z-index: 1; opacity: 0.3; background: none; border: 0; padding: 0;
+    color: #fff; cursor: pointer; line-height: 0;
+  }
+  .sound:hover { opacity: 1; }
+  .sound svg { width: 45px; height: 36px; fill: currentColor; }
+
+  /* Cards */
+  .below { margin: 0 auto; max-width: 1010px; padding: 30px 10px 10px; }
+  @media (min-width: 500px) { .below { padding: 40px 20px 20px; } }
+  .cards { width: 100%; margin-bottom: 20px; }
+  .cards > * { margin-bottom: 20px; }
+  .cards > :last-child { margin-bottom: 0; }
+  @media (min-width: 700px) {
+    .cards { display: flex; }
+    .cards > * { margin-right: 20px; margin-bottom: 0; }
+    .cards > :last-child { margin-right: 0; }
+  }
+  .card { display: block; flex: 1 1 0%; line-height: 1; background: var(--card); padding: 20px 0; color: var(--text); min-width: 0; }
+  @media (min-width: 700px) { .card { box-shadow: rgba(0, 0, 0, 0.1) 0 2px 5px; border-radius: 5px; padding: 30px; } }
+  .card h1 { font-weight: 400; font-size: 36px; line-height: 36px; margin: 0 0 20px; }
+  .card p { margin: 15px 0; line-height: 1.7; }
+  .card p:last-child { margin-bottom: 0; }
+  .card h1 + p { margin-top: 0; }
+  .chart { width: 100%; height: 330px; display: block; }
+  .chart-cap { font-size: 14px; line-height: 1.5; color: #888; margin-top: 10px; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 520px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .stat .k { font-size: 14px; line-height: 1.5; opacity: 0.6; }
+  .stat .v { font-size: 36px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .history { width: 100%; border-collapse: collapse; font-size: 16px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+  .history th { text-align: left; font-weight: 400; opacity: 0.6; padding: 6px 8px; border-bottom: 1px solid #e6e8f4; }
+  .history td { padding: 6px 8px; border-bottom: 1px solid #f2f3f9; }
+  .history-wrap { overflow-x: auto; margin-top: 20px; }
+  .empty { opacity: 0.6; }
+  .linkish { background: none; border: 0; color: var(--link); font: 14px var(--font); cursor: pointer; padding: 0; }
+  .reset-row { margin-top: 20px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .danger { background: var(--hero-red); color: #fff; border: 0; border-radius: 3px; padding: 6px 14px; font: bold 14px var(--font); cursor: pointer; }
+
+  footer { margin: 0 auto; max-width: 1010px; position: relative; padding: 10px 10px calc(30px + env(safe-area-inset-bottom, 0px)); color: #a0a0a0; text-align: right; font-size: 14px; line-height: 1.7; }
+  @media (min-width: 500px) { footer { padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); } }
+  footer p { margin: 0; }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a href="#" id="homeLink"><svg class="bolt" viewBox="0 0 384 512" aria-hidden="true"><path d="M0 256L28.5 28c2-16 15.6-28 31.8-28H228.9c15 0 27.1 12.1 27.1 27.1c0 3.2-.6 6.5-1.7 9.5L208 160H347.3c20.2 0 36.7 16.4 36.7 36.7c0 7.4-2.2 14.6-6.4 20.7l-192.2 281c-5.9 8.6-15.6 13.7-25.9 13.7h-2.9c-15.7 0-28.5-12.8-28.5-28.5c0-2.3 .3-4.6 .9-6.9L176 288H32c-17.7 0-32-14.3-32-32z"/></svg>Visual Memory</a>
+    <span class="full-nav"><a href="#stats">Stats</a></span>
+  </div>
+</nav>
+
+<section class="hero" id="hero">
+  <div class="stage">
+    <!-- Splash -->
+    <div class="view" id="splash">
+      <div class="grp">
+        <svg class="hero-icon" viewBox="0 0 128 128" fill="none" aria-hidden="true"><rect width="58" height="58" rx="10" fill="#fff"/><rect x="70" width="58" height="58" rx="10" fill="#fff"/><rect y="70" width="58" height="58" rx="10" fill="#fff"/><path fill-rule="evenodd" clip-rule="evenodd" d="M118 80H80V118H118V80ZM80 70C74.48 70 70 74.48 70 80V118C70 123.52 74.48 128 80 128H118C123.52 128 128 123.52 128 118V80C128 74.48 123.52 70 118 70H80Z" fill="#fff"/></svg>
+        <h1>Visual Memory Test</h1>
+        <h2>Memorize the squares.</h2>
+      </div>
+      <div class="grp"><button class="btn" id="startBtn" type="button">Start</button></div>
+      <div class="grp picker">
+        <div class="picker-label"><span>Start at level</span><b id="pickedLevel">1</b></div>
+        <div class="strip" id="strip" role="listbox" aria-label="Start level"></div>
+      </div>
+    </div>
+
+    <!-- Game -->
+    <div class="view" id="game" hidden>
+      <div class="grp">
+        <span class="qu"><span class="lbl">Level</span><span id="levelNum">1</span></span>
+        <span class="qu"><span class="lbl">Lives</span><span id="hearts"></span></span>
+      </div>
+      <div class="grp"><div class="board" id="board"></div></div>
+    </div>
+
+    <!-- Game over -->
+    <div class="view" id="over" hidden>
+      <div class="grp"><svg viewBox="0 0 128 128" width="80" height="80" fill="none" aria-hidden="true"><rect width="58" height="58" rx="10" fill="#fff"/><rect x="70" width="58" height="58" rx="10" fill="#fff"/><rect y="70" width="58" height="58" rx="10" fill="#fff"/><path fill-rule="evenodd" clip-rule="evenodd" d="M118 80H80V118H118V80ZM80 70C74.48 70 70 74.48 70 80V118C70 123.52 74.48 128 80 128H118C123.52 128 128 123.52 128 118V80C128 74.48 123.52 70 118 70H80Z" fill="#fff"/></svg></div>
+      <div class="grp">
+        <div class="result-label">Visual Memory</div>
+        <h1 class="result-score" id="resultScore">Level 1</h1>
+      </div>
+      <div class="grp">
+        <p class="result-note" id="resultNote">Save your score to see how you compare.</p>
+        <div class="btns">
+          <button class="btn" id="saveBtn" type="button">Save score</button>
+          <button class="btn secondary" id="againBtn" type="button">Try again</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="sound" id="soundBtn" type="button" title="Toggle sound effects on and off" aria-label="Toggle sound"></button>
+  </div>
+</section>
+
+<div class="below" id="stats">
+  <div class="cards">
+    <div class="card">
+      <h1>Statistics</h1>
+      <canvas class="chart" id="chart" aria-label="Distribution of scores"></canvas>
+      <div class="chart-cap" id="chartCap"></div>
+    </div>
+    <div class="card">
+      <h1>About the test</h1>
+      <p>Every level, a number of tiles will flash white. Memorize them, and pick them again after the tiles are reset!</p>
+      <p>Levels get progressively more difficult, to challenge your skills.</p>
+      <p>If you miss 3 tiles on a level, you lose one life.</p>
+      <p>You have three lives.</p>
+      <p>Make it as far as you can!</p>
+    </div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h1>Your stats</h1>
+      <div class="stat-row">
+        <div class="stat"><div class="k">Games</div><div class="v" id="sGames">0</div></div>
+        <div class="stat"><div class="k">Best level</div><div class="v" id="sBest">–</div></div>
+        <div class="stat"><div class="k">Average</div><div class="v" id="sAvg">–</div></div>
+        <div class="stat"><div class="k">Last 10 avg</div><div class="v" id="sRecent">–</div></div>
+      </div>
+      <canvas class="chart" id="myChart" style="height:220px" aria-label="Your scores over time"></canvas>
+      <div class="chart-cap">Level reached in each saved game, oldest to newest. The light part is where you started.</div>
+      <div class="history-wrap">
+        <table class="history">
+          <thead><tr><th>#</th><th>Reached</th><th>Started at</th><th>Levels cleared</th><th>When</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+      <div class="reset-row">
+        <button class="linkish" id="resetBtn" type="button">Reset my stats</button>
+        <span id="resetConfirm" hidden>Delete all your saved games? <button class="danger" id="resetYes" type="button">Delete</button> <button class="linkish" id="resetNo" type="button">Cancel</button></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer><p>Scores are saved on this device only.</p></footer>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+
+  const MAX_START = 50;
+  // Same rules as the original test.
+  const gridSize = (level) => Math.floor(Math.sqrt(9 + level * 3));
+  const tileCount = (level) => 2 + level;
+
+  // ---------------- Sound (synthesized) ----------------
+  let soundOn = store.get("vm.sound", true);
+  let ctx = null;
+  const SCALE = [0, 2, 4, 5, 7, 9, 11];
+  function pitch(n) {
+    let t = SCALE[((n % 7) + 7) % 7] + 12 * Math.floor(n / 7);
+    while (t > 24) t -= 12;
+    return Math.pow(2, t / 12);
+  }
+  function tone(freq, start, dur, vol, type = "sine") {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(vol, start + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(start); o.stop(start + dur + 0.02);
+  }
+  function play(kind, rate = 1) {
+    if (!soundOn) return;
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
+      const t = ctx.currentTime, base = 523.25;
+      if (kind === "boop") tone(base * rate, t, 0.18, 0.22);
+      else if (kind === "reveal") { tone(392, t, 0.12, 0.12, "triangle"); tone(587.33, t + 0.06, 0.18, 0.1, "triangle"); }
+      else if (kind === "go") tone(783.99, t, 0.12, 0.1, "triangle");
+      else if (kind === "victory") [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, t + i * 0.07, 0.25, 0.14));
+    } catch {}
+  }
+  const ICON_ON = '<svg viewBox="0 0 576 512"><path d="M301 34.8c11.5 5.1 19 16.6 19 29.2v384c0 12.6-7.4 24.1-19 29.2s-25 3.1-34.4-5.3L131.8 352H64c-35.3 0-64-28.7-64-64v-64c0-35.3 28.7-64 64-64h67.8L266.6 40.1c9.4-8.4 22.9-10.4 34.4-5.3zM412.6 181.5C434.1 199.1 448 225.9 448 256s-13.9 56.9-35.4 74.5c-10.3 8.4-25.4 6.8-33.8-3.5s-6.8-25.4 3.5-33.8C393.1 284.4 400 271 400 256s-6.9-28.4-17.7-37.3c-10.3-8.4-11.8-23.5-3.5-33.8s23.5-11.8 33.8-3.5zm60.5-74.5C517.2 143 544 196.3 544 256s-26.8 113-70.9 149c-10.3 8.4-25.4 6.8-33.8-3.5s-6.8-25.4 3.5-33.8C478.6 339 496 299.6 496 256s-17.4-83-53.2-111.8c-10.3-8.4-11.8-23.5-3.5-33.8s23.5-11.8 33.8-3.5z"/></svg>';
+  const ICON_OFF = '<svg viewBox="0 0 576 512"><path d="M301 34.8c11.5 5.1 19 16.6 19 29.2v384c0 12.6-7.4 24.1-19 29.2s-25 3.1-34.4-5.3L131.8 352H64c-35.3 0-64-28.7-64-64v-64c0-35.3 28.7-64 64-64h67.8L266.6 40.1c9.4-8.4 22.9-10.4 34.4-5.3zM425 167l55 55 55-55c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-55 55 55 55c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-55-55-55 55c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l55-55-55-55c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0z"/></svg>';
+  function drawSound() { $("soundBtn").innerHTML = soundOn ? ICON_ON : ICON_OFF; }
+  $("soundBtn").onclick = () => { soundOn = !soundOn; store.set("vm.sound", soundOn); drawSound(); };
+  drawSound();
+
+  // ---------------- Start level picker ----------------
+  let startLevel = Math.min(MAX_START, Math.max(1, store.get("vm.start", 1) | 0));
+  const strip = $("strip");
+  for (let l = 1; l <= MAX_START; l++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "lv"; b.textContent = l; b.dataset.l = l;
+    b.setAttribute("role", "option");
+    strip.appendChild(b);
+  }
+  function pick(l, scroll) {
+    startLevel = l;
+    store.set("vm.start", l);
+    for (const b of strip.children) {
+      const on = +b.dataset.l === l;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-selected", on);
+    }
+    $("pickedLevel").textContent = l;
+    if (scroll) {
+      const b = strip.children[l - 1];
+      strip.scrollLeft = b.offsetLeft - strip.clientWidth / 2 + b.offsetWidth / 2;
+    }
+  }
+  strip.addEventListener("click", (e) => { const b = e.target.closest(".lv"); if (b) pick(+b.dataset.l, false); });
+  requestAnimationFrame(() => pick(startLevel, true));
+
+  // ---------------- Game ----------------
+  const hero = $("hero"), board = $("board");
+  const S = { phase: "splash", level: 1, lives: 3, answers: null, user: null, n: 3, lastCorrect: true, startedAt: 1 };
+  let timer = null;
+  const after = (ms, fn) => { clearTimeout(timer); timer = setTimeout(fn, ms); };
+
+  function show(id) {
+    for (const v of ["splash", "game", "over"]) $(v).hidden = v !== id;
+    const el = $(id); el.style.animation = "none"; void el.offsetWidth; el.style.animation = "";
+  }
+
+  function flash(good) {
+    hero.classList.remove("flash-good", "flash-bad");
+    void hero.offsetWidth;
+    hero.classList.add(good ? "flash-good" : "flash-bad");
+  }
+
+  const HEART = '<svg class="heart" viewBox="0 0 512 512" aria-hidden="true"><path d="M241 87.1l15 20.7 15-20.7C296 52.5 336.2 32 378.9 32 452.4 32 512 91.6 512 165.1v2.6c0 112.2-139.9 242.5-212.9 298.2-12.4 9.4-27.6 14.1-43.1 14.1s-30.8-4.6-43.1-14.1C139.9 410.2 0 279.9 0 167.7v-2.6C0 91.6 59.6 32 133.1 32 175.8 32 216 52.5 241 87.1z"/></svg>';
+  function drawHud() {
+    $("levelNum").textContent = S.level;
+    const recapLoss = (S.phase === "levelrecap" || S.phase === "postrecap") && !S.lastCorrect ? 1 : 0;
+    const shown = S.lives - recapLoss;
+    $("hearts").innerHTML = [0, 1, 2].map((i) => HEART.replace('class="heart"', `class="heart" style="opacity:${i < shown ? 1 : 0.3}"`)).join("");
+  }
+
+  function tileSize() {
+    const t = Math.min(400, window.innerWidth - 50);
+    return Math.floor(t / S.n - 1);
+  }
+
+  function buildBoard() {
+    const r = tileSize();
+    board.innerHTML = "";
+    for (let y = 0; y < S.n; y++) {
+      const row = document.createElement("div");
+      row.className = "row";
+      for (let x = 0; x < S.n; x++) {
+        const t = document.createElement("div");
+        t.className = "tile";
+        t.dataset.x = x; t.dataset.y = y;
+        t.style.cssText = `width:${r}px;height:${r}px;border-width:${r / 16}px;border-radius:${r / 8}px`;
+        row.appendChild(t);
+      }
+      board.appendChild(row);
+    }
+  }
+  window.addEventListener("resize", () => {
+    if (S.phase === "splash" || S.phase === "gameover") return;
+    const r = tileSize();
+    for (const t of board.querySelectorAll(".tile")) t.style.cssText = `width:${r}px;height:${r}px;border-width:${r / 16}px;border-radius:${r / 8}px`;
+  });
+
+  // Which board is visible depends on the phase, like the original.
+  function paint() {
+    const src = S.phase === "flipped" ? S.answers : (S.phase === "usertest" || S.phase === "levelrecap") ? S.user : null;
+    for (const t of board.querySelectorAll(".tile")) {
+      const x = +t.dataset.x, y = +t.dataset.y;
+      const on = !!(src && src[y][x]);
+      const err = (S.phase === "usertest" || S.phase === "levelrecap") && S.user[y][x] && !S.answers[y][x];
+      t.classList.toggle("active", on && !err);
+      t.classList.toggle("error", !!err);
+    }
+  }
+
+  const blank = (n) => Array.from({ length: n }, () => Array(n).fill(false));
+  function initStage() {
+    S.n = gridSize(S.level);
+    const count = tileCount(S.level);
+    S.answers = blank(S.n);
+    let placed = 0;
+    while (placed < count) {
+      const x = Math.floor(Math.random() * S.n), y = Math.floor(Math.random() * S.n);
+      if (!S.answers[y][x]) { S.answers[y][x] = true; placed++; }
+    }
+    S.user = blank(S.n);
+    S.phase = "preflip";
+    buildBoard(); paint(); drawHud();
+    after(500, () => {
+      S.phase = "flipped"; paint(); play("reveal");
+      after(1200, () => { S.phase = "usertest"; paint(); play("go"); });
+    });
+  }
+
+  function evaluate() {
+    let wrong = 0, correct = 0, won = true;
+    for (let y = 0; y < S.n; y++) for (let x = 0; x < S.n; x++) {
+      const a = S.answers[y][x], u = S.user[y][x];
+      if (a !== u) { if (u) wrong++; else won = false; }
+      if (a && u) correct++;
+    }
+    return { wrong, correct, won };
+  }
+
+  function clickTile(x, y) {
+    if (S.phase !== "usertest" || S.user[y][x]) return;
+    S.user[y][x] = true;
+    const hit = S.answers[y][x];
+    const r = evaluate();
+    const lost = r.wrong >= 3;
+    if (r.won) play("victory");
+    else if (lost) play("boop", pitch(-4));
+    else play("boop", hit ? pitch(r.correct - 1) : pitch(-3));
+    if (r.won || lost) {
+      S.phase = "levelrecap";
+      S.lastCorrect = !lost;
+      paint(); drawHud(); flash(!lost);
+      after(500, () => {
+        S.phase = "postrecap"; paint();
+        after(500, () => {
+          if (r.won) { S.level++; initStage(); return; }
+          S.lives--;
+          if (S.lives <= 0) gameOver(); else initStage();
+        });
+      });
+    } else paint();
+  }
+
+  board.addEventListener("pointerdown", (e) => {
+    const t = e.target.closest(".tile");
+    if (!t) return;
+    e.preventDefault();
+    clickTile(+t.dataset.x, +t.dataset.y);
+  });
+  board.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  function startGame() {
+    // Unlock audio on the user's tap.
+    if (soundOn) { try { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); } catch {} }
+    S.level = startLevel; S.startedAt = startLevel; S.lives = 3; S.lastCorrect = true;
+    show("game");
+    initStage();
+  }
+
+  let saved = false;
+  function gameOver() {
+    clearTimeout(timer);
+    S.phase = "gameover";
+    saved = false;
+    $("resultScore").textContent = "Level " + S.level;
+    $("resultNote").textContent = "Save your score to see how you compare.";
+    $("saveBtn").disabled = false;
+    $("saveBtn").textContent = "Save score";
+    show("over");
+  }
+
+  function saveScore() {
+    if (saved) return;
+    saved = true;
+    const games = store.get("vm.games", []);
+    games.push({ level: S.level, start: S.startedAt, t: Date.now() });
+    store.set("vm.games", games);
+    $("saveBtn").disabled = true;
+    $("saveBtn").textContent = "Saved";
+    $("resultNote").textContent = `Higher than about ${Math.round(percentile(S.level))}% of players.`;
+    renderStats();
+    $("stats").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function toSplash() {
+    clearTimeout(timer);
+    S.phase = "splash";
+    show("splash");
+    pick(startLevel, true);
+  }
+
+  $("startBtn").addEventListener("mousedown", startGame);
+  $("startBtn").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startGame(); } });
+  $("saveBtn").onclick = saveScore;
+  $("againBtn").onclick = toSplash;
+  $("homeLink").onclick = (e) => { e.preventDefault(); toSplash(); window.scrollTo({ top: 0 }); };
+
+  // ---------------- Stats ----------------
+  // Approximate share of all players by level reached (0–24), read off the original test's public chart.
+  const DIST = [0.5, 1, 0.3, 0.3, 0.3, 0.5, 2, 4, 9, 63, 65, 52, 40, 30, 45, 16, 7, 3, 2, 2, 0.7, 0.6, 0.5, 0.4, 0.2];
+  const DIST_TOTAL = DIST.reduce((a, b) => a + b, 0);
+  function percentile(level) {
+    let below = 0;
+    for (let i = 0; i < DIST.length; i++) { if (i < level) below += DIST[i]; else if (i === level) below += DIST[i] / 2; }
+    if (level >= DIST.length) below = DIST_TOTAL;
+    return Math.min(99.9, (below / DIST_TOTAL) * 100);
+  }
+
+  function setupCanvas(cv) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    return { g, w, h };
+  }
+
+  function drawDistribution(games) {
+    const { g, w, h } = setupCanvas($("chart"));
+    const L = 6, R = 6, T = 10, B = 26;
+    const pw = w - L - R, ph = h - T - B;
+    const max = Math.max(...DIST);
+    const X = (i) => L + (i / (DIST.length - 1)) * pw;
+    const Y = (v) => T + ph - (v / max) * ph * 0.92;
+    g.font = "11px Helvetica, Arial, sans-serif";
+    g.textAlign = "center";
+    for (let i = 0; i < DIST.length; i++) {
+      g.strokeStyle = "#e6e6e6"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(Math.round(X(i)) + 0.5, T); g.lineTo(Math.round(X(i)) + 0.5, T + ph); g.stroke();
+      g.save(); g.translate(X(i), T + ph + 14); g.rotate(-Math.PI / 4); g.fillStyle = "#666"; g.fillText(i, 0, 0); g.restore();
+    }
+    // Smooth curve through the points (Catmull–Rom).
+    const pts = DIST.map((v, i) => [X(i), Y(v)]);
+    function path() {
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+        g.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
+      }
+    }
+    g.beginPath(); path(); g.lineTo(X(DIST.length - 1), T + ph); g.lineTo(X(0), T + ph); g.closePath();
+    g.fillStyle = "rgba(77, 155, 240, 0.22)"; g.fill();
+    g.beginPath(); path(); g.strokeStyle = "#3a7bd5"; g.lineWidth = 2.5; g.stroke();
+    g.fillStyle = "#3a7bd5";
+    for (const [x, y] of pts) { g.beginPath(); g.arc(x, y, 2.5, 0, Math.PI * 2); g.fill(); }
+
+    const marker = (lvl, color, label, row) => {
+      const x = X(Math.min(lvl, DIST.length - 1));
+      g.strokeStyle = color; g.lineWidth = 2; g.setLineDash([5, 4]);
+      g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke(); g.setLineDash([]);
+      g.font = "bold 12px Helvetica, Arial, sans-serif";
+      const tw = g.measureText(label).width + 10;
+      const bx = Math.min(Math.max(x - tw / 2, 0), w - tw), by = T + row * 20;
+      g.fillStyle = color; g.fillRect(bx, by, tw, 17);
+      g.fillStyle = "#fff"; g.textAlign = "center"; g.fillText(label, bx + tw / 2, by + 12.5);
+    };
+    if (games.length) {
+      const best = Math.max(...games.map((x) => x.level));
+      const last = games[games.length - 1].level;
+      marker(best, "#e09a00", "Your best: " + best, 0);
+      if (last !== best) marker(last, "#ce2636", "Last: " + last, 1);
+      $("chartCap").textContent = `Your best (level ${best}) is higher than about ${Math.round(percentile(best))}% of players. Curve is approximate.`;
+    } else {
+      $("chartCap").textContent = "Save a score to see where you land. Curve is approximate.";
+    }
+  }
+
+  function drawMine(games) {
+    const { g, w, h } = setupCanvas($("myChart"));
+    const L = 30, R = 8, T = 10, B = 22;
+    const pw = w - L - R, ph = h - T - B;
+    g.font = "12px Helvetica, Arial, sans-serif";
+    if (!games.length) {
+      g.fillStyle = "#999"; g.textAlign = "center";
+      g.fillText("No games yet. Press Start above.", w / 2, h / 2);
+      return;
+    }
+    const shown = games.slice(-40);
+    const maxL = Math.max(10, ...shown.map((x) => x.level));
+    const step = maxL > 30 ? 10 : 5;
+    const top = Math.ceil(maxL / step) * step;
+    const Y = (v) => T + ph - (v / top) * ph;
+    g.textAlign = "right"; g.textBaseline = "middle";
+    for (let v = 0; v <= top; v += step) {
+      g.strokeStyle = "#eceef5"; g.beginPath(); g.moveTo(L, Math.round(Y(v)) + 0.5); g.lineTo(w - R, Math.round(Y(v)) + 0.5); g.stroke();
+      g.fillStyle = "#888"; g.fillText(v, L - 6, Y(v));
+    }
+    const slot = pw / shown.length, bw = Math.max(3, Math.min(26, slot * 0.7));
+    const best = Math.max(...games.map((x) => x.level));
+    shown.forEach((x, i) => {
+      const cx = L + slot * (i + 0.5);
+      // Part played from the start level (light) and levels cleared (solid).
+      g.fillStyle = "rgba(77, 155, 240, 0.25)";
+      g.fillRect(cx - bw / 2, Y(x.start), bw, Y(0) - Y(x.start));
+      g.fillStyle = x.level === best ? "#e09a00" : "#4d9bf0";
+      g.fillRect(cx - bw / 2, Y(x.level), bw, Y(x.start) - Y(x.level) || 2);
+    });
+    g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillStyle = "#888";
+    g.fillText(games.length > 40 ? "last 40 games" : `${games.length} game${games.length === 1 ? "" : "s"}`, L + pw / 2, h - 4);
+  }
+
+  function fmtDate(t) {
+    const d = new Date(t);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function renderStats() {
+    const games = store.get("vm.games", []);
+    const n = games.length;
+    const avg = (arr) => (arr.reduce((a, b) => a + b.level, 0) / arr.length).toFixed(1);
+    $("sGames").textContent = n;
+    $("sBest").textContent = n ? Math.max(...games.map((x) => x.level)) : "–";
+    $("sAvg").textContent = n ? avg(games) : "–";
+    $("sRecent").textContent = n ? avg(games.slice(-10)) : "–";
+    const body = $("historyBody");
+    if (!n) body.innerHTML = '<tr><td colspan="5" class="empty">No games yet.</td></tr>';
+    else body.innerHTML = games.slice(-15).reverse().map((x, i) =>
+      `<tr><td>${n - i}</td><td><b>${x.level}</b></td><td>${x.start}</td><td>${x.level - x.start}</td><td>${fmtDate(x.t)}</td></tr>`).join("");
+    drawDistribution(games);
+    drawMine(games);
+  }
+
+  $("resetBtn").onclick = () => { $("resetConfirm").hidden = false; };
+  $("resetNo").onclick = () => { $("resetConfirm").hidden = true; };
+  $("resetYes").onclick = () => { store.set("vm.games", []); $("resetConfirm").hidden = true; renderStats(); };
+
+  let rz;
+  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderStats, 150); });
+  renderStats();
+})();
+</script>
+</body>
+</html>
