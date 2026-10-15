@@ -84,7 +84,7 @@
   .picker-label { font-size: 18px; }
   .picker-label span { opacity: 0.6; margin-right: 10px; }
   .strip {
-    display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity; padding: 10px 4px;
+    display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity; padding: 10px 30px; scroll-padding: 0 30px;
     scrollbar-width: none; -webkit-overflow-scrolling: touch;
     mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
@@ -484,7 +484,7 @@
   }
 
   function saveScore() {
-    if (saved) return;
+    if (saved || S.phase !== "gameover") return;
     saved = true;
     const games = store.get("vm.games", []);
     games.push({ level: S.level, start: S.startedAt, t: Date.now() });
